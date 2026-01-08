@@ -56,7 +56,7 @@ func BenchmarkStore_Get(b *testing.B) {
 	store, _ := gofeat.New(gofeat.Config{
 		Features: []gofeat.Feature{
 			{Name: "count", Aggregate: gofeat.Count},
-			{Name: "sum", Aggregate: gofeat.Sum, Field: "amount"},
+			{Name: "sum", Aggregate: gofeat.Sum("amount")},
 		},
 	})
 	defer store.Close()
@@ -85,7 +85,7 @@ func BenchmarkStore_GetAt(b *testing.B) {
 		TTL: 1 * time.Hour,
 		Features: []gofeat.Feature{
 			{Name: "count", Aggregate: gofeat.Count, Window: gofeat.Sliding(30 * time.Minute)},
-			{Name: "sum", Aggregate: gofeat.Sum, Field: "amount", Window: gofeat.Sliding(30 * time.Minute)},
+			{Name: "sum", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(30 * time.Minute)},
 		},
 	})
 	defer store.Close()
@@ -147,11 +147,11 @@ func BenchmarkStore_MultipleFeatures(b *testing.B) {
 	store, _ := gofeat.New(gofeat.Config{
 		Features: []gofeat.Feature{
 			{Name: "count", Aggregate: gofeat.Count},
-			{Name: "sum", Aggregate: gofeat.Sum, Field: "amount"},
-			{Name: "min", Aggregate: gofeat.Min, Field: "amount"},
-			{Name: "max", Aggregate: gofeat.Max, Field: "amount"},
-			{Name: "last_country", Aggregate: gofeat.Last, Field: "country"},
-			{Name: "distinct_countries", Aggregate: gofeat.CountDistinct, Field: "country"},
+			{Name: "sum", Aggregate: gofeat.Sum("amount")},
+			{Name: "min", Aggregate: gofeat.Min("amount")},
+			{Name: "max", Aggregate: gofeat.Max("amount")},
+			{Name: "last_country", Aggregate: gofeat.Last("country")},
+			{Name: "distinct_countries", Aggregate: gofeat.CountDistinct("country")},
 		},
 	})
 	defer store.Close()

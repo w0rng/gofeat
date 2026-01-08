@@ -17,14 +17,14 @@ func main() {
 			// Velocity features
 			{Name: "tx_count_1h", Aggregate: gofeat.Count, Window: gofeat.Sliding(time.Hour)},
 			{Name: "tx_count_24h", Aggregate: gofeat.Count, Window: gofeat.Sliding(24 * time.Hour)},
-			{Name: "tx_sum_1h", Aggregate: gofeat.Sum, Field: "amount", Window: gofeat.Sliding(time.Hour)},
+			{Name: "tx_sum_1h", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(time.Hour)},
 
 			// Diversity features
-			{Name: "countries_1h", Aggregate: gofeat.CountDistinct, Field: "country", Window: gofeat.Sliding(time.Hour)},
-			{Name: "devices_24h", Aggregate: gofeat.CountDistinct, Field: "device_id", Window: gofeat.Sliding(24 * time.Hour)},
+			{Name: "countries_1h", Aggregate: gofeat.CountDistinct("country"), Window: gofeat.Sliding(time.Hour)},
+			{Name: "devices_24h", Aggregate: gofeat.CountDistinct("device_id"), Window: gofeat.Sliding(24 * time.Hour)},
 
 			// Amount features
-			{Name: "max_amount_24h", Aggregate: gofeat.Max, Field: "amount", Window: gofeat.Sliding(24 * time.Hour)},
+			{Name: "max_amount_24h", Aggregate: gofeat.Max("amount"), Window: gofeat.Sliding(24 * time.Hour)},
 		},
 	})
 	if err != nil {

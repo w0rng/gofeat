@@ -101,11 +101,7 @@ func (s *Store) GetAt(ctx context.Context, entityID string, at time.Time) (Resul
 		selected := f.Window.Select(filtered, at)
 		agg := f.Aggregate()
 		for _, e := range selected {
-			if f.Field == "" {
-				agg.Add(nil)
-			} else if v, ok := e.Data[f.Field]; ok {
-				agg.Add(v)
-			}
+			agg.Add(e.Data)
 		}
 		values[f.Name] = agg.Result()
 	}

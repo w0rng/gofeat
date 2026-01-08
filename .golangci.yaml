@@ -138,6 +138,7 @@ linters:
           - dupl
           - errcheck
           - gosec
+          - funlen
       - text: 'shadow: declaration of "err" shadows declaration'
         linters:
           - govet

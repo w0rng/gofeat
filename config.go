@@ -12,6 +12,5 @@ type Config struct {
 type Feature struct {
 	Name      string
 	Aggregate AggregatorFactory
-	Field     string // empty for Count
 	Window    Window // nil for Lifetime
 }

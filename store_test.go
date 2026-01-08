@@ -72,7 +72,7 @@ func TestStore_PushGet(t *testing.T) {
 	store, err := gofeat.New(gofeat.Config{
 		Features: []gofeat.Feature{
 			{Name: "count", Aggregate: gofeat.Count},
-			{Name: "sum", Aggregate: gofeat.Sum, Field: "amount"},
+			{Name: "sum", Aggregate: gofeat.Sum("amount")},
 		},
 	})
 	if err != nil {
@@ -494,11 +494,11 @@ func TestStore_MultipleFeatures(t *testing.T) {
 	store, err := gofeat.New(gofeat.Config{
 		Features: []gofeat.Feature{
 			{Name: "count", Aggregate: gofeat.Count},
-			{Name: "sum", Aggregate: gofeat.Sum, Field: "amount"},
-			{Name: "min", Aggregate: gofeat.Min, Field: "amount"},
-			{Name: "max", Aggregate: gofeat.Max, Field: "amount"},
-			{Name: "last_country", Aggregate: gofeat.Last, Field: "country"},
-			{Name: "distinct_countries", Aggregate: gofeat.CountDistinct, Field: "country"},
+			{Name: "sum", Aggregate: gofeat.Sum("amount")},
+			{Name: "min", Aggregate: gofeat.Min("amount")},
+			{Name: "max", Aggregate: gofeat.Max("amount")},
+			{Name: "last_country", Aggregate: gofeat.Last("country")},
+			{Name: "distinct_countries", Aggregate: gofeat.CountDistinct("country")},
 		},
 	})
 	if err != nil {

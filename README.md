@@ -43,9 +43,9 @@ func main() {
         TTL: 24 * time.Hour,
         Features: []gofeat.Feature{
             {Name: "tx_count_1h", Aggregate: gofeat.Count, Window: gofeat.Sliding(time.Hour)},
-            {Name: "tx_sum_1h", Aggregate: gofeat.Sum, Field: "amount", Window: gofeat.Sliding(time.Hour)},
-            {Name: "countries_1h", Aggregate: gofeat.CountDistinct, Field: "country", Window: gofeat.Sliding(time.Hour)},
-            {Name: "last_country", Aggregate: gofeat.Last, Field: "country"},
+            {Name: "tx_sum_1h", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(time.Hour)},
+            {Name: "countries_1h", Aggregate: gofeat.CountDistinct("country"), Window: gofeat.Sliding(time.Hour)},
+            {Name: "last_country", Aggregate: gofeat.Last("country")},
         },
     })
     if err != nil {
@@ -169,17 +169,21 @@ Implement the `Aggregator` interface:
 
 ```go
 type Aggregator interface {
-    Add(value any)
+    Add(data map[string]any)
     Result() any
-    Reset()
 }
 
 // Example: Median aggregator
 type medianAgg struct {
     values []float64
+    field  string
 }
 
-func (a *medianAgg) Add(v any) {
+func (a *medianAgg) Add(data map[string]any) {
+    v, ok := data[a.field]
+    if !ok {
+        return
+    }
     if f, ok := v.(float64); ok {
         a.values = append(a.values, f)
     }
@@ -193,16 +197,14 @@ func (a *medianAgg) Result() any {
     return a.values[len(a.values)/2]
 }
 
-func (a *medianAgg) Reset() {
-    a.values = a.values[:0]
-}
-
-var Median gofeat.AggregatorFactory = func() gofeat.Aggregator {
-    return &medianAgg{}
+func Median(field string) gofeat.AggregatorFactory {
+    return func() gofeat.Aggregator {
+        return &medianAgg{field: field}
+    }
 }
 
 // Usage
-{Name: "median_amount", Aggregate: Median, Field: "amount", Window: gofeat.Sliding(time.Hour)}
+{Name: "median_amount", Aggregate: Median("amount"), Window: gofeat.Sliding(time.Hour)}
 ```
 
 ## Custom Windows

@@ -14,9 +14,9 @@ func main() {
 		TTL: 24 * time.Hour,
 		Features: []gofeat.Feature{
 			{Name: "tx_count_1h", Aggregate: gofeat.Count, Window: gofeat.Sliding(time.Hour)},
-			{Name: "tx_sum_1h", Aggregate: gofeat.Sum, Field: "amount", Window: gofeat.Sliding(time.Hour)},
-			{Name: "tx_max_1h", Aggregate: gofeat.Max, Field: "amount", Window: gofeat.Sliding(time.Hour)},
-			{Name: "last_country", Aggregate: gofeat.Last, Field: "country"},
+			{Name: "tx_sum_1h", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(time.Hour)},
+			{Name: "tx_max_1h", Aggregate: gofeat.Max("amount"), Window: gofeat.Sliding(time.Hour)},
+			{Name: "last_country", Aggregate: gofeat.Last("country")},
 		},
 	})
 	if err != nil {

@@ -13,9 +13,14 @@ import (
 // Custom aggregator: Median
 type medianAgg struct {
 	values []float64
+	field  string
 }
 
-func (a *medianAgg) Add(v any) {
+func (a *medianAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
 	switch n := v.(type) {
 	case float64:
 		a.values = append(a.values, n)
@@ -39,28 +44,31 @@ func (a *medianAgg) Result() any {
 	return sorted[n/2]
 }
 
-func (a *medianAgg) Reset() {
-	a.values = a.values[:0]
-}
-
 // Median is a custom aggregator factory
-var Median gofeat.AggregatorFactory = func() gofeat.Aggregator {
-	return &medianAgg{}
+func Median(field string) gofeat.AggregatorFactory {
+	return func() gofeat.Aggregator {
+		return &medianAgg{field: field}
+	}
 }
 
 // Custom aggregator: Percentile
 type percentileAgg struct {
 	values     []float64
 	percentile float64
+	field      string
 }
 
-func newPercentile(p float64) gofeat.AggregatorFactory {
+func Percentile(field string, p float64) gofeat.AggregatorFactory {
 	return func() gofeat.Aggregator {
-		return &percentileAgg{percentile: p}
+		return &percentileAgg{field: field, percentile: p}
 	}
 }
 
-func (a *percentileAgg) Add(v any) {
+func (a *percentileAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
 	switch n := v.(type) {
 	case float64:
 		a.values = append(a.values, n)
@@ -81,24 +89,20 @@ func (a *percentileAgg) Result() any {
 	return sorted[idx]
 }
 
-func (a *percentileAgg) Reset() {
-	a.values = a.values[:0]
-}
-
 func main() {
 	store, err := gofeat.New(gofeat.Config{
 		TTL: 24 * time.Hour,
 		Features: []gofeat.Feature{
 			// Built-in aggregators
 			{Name: "count", Aggregate: gofeat.Count, Window: gofeat.Sliding(time.Hour)},
-			{Name: "sum", Aggregate: gofeat.Sum, Field: "amount", Window: gofeat.Sliding(time.Hour)},
-			{Name: "min", Aggregate: gofeat.Min, Field: "amount", Window: gofeat.Sliding(time.Hour)},
-			{Name: "max", Aggregate: gofeat.Max, Field: "amount", Window: gofeat.Sliding(time.Hour)},
+			{Name: "sum", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(time.Hour)},
+			{Name: "min", Aggregate: gofeat.Min("amount"), Window: gofeat.Sliding(time.Hour)},
+			{Name: "max", Aggregate: gofeat.Max("amount"), Window: gofeat.Sliding(time.Hour)},
 
 			// Custom aggregators
-			{Name: "median", Aggregate: Median, Field: "amount", Window: gofeat.Sliding(time.Hour)},
-			{Name: "p90", Aggregate: newPercentile(90), Field: "amount", Window: gofeat.Sliding(time.Hour)},
-			{Name: "p95", Aggregate: newPercentile(95), Field: "amount", Window: gofeat.Sliding(time.Hour)},
+			{Name: "median", Aggregate: Median("amount"), Window: gofeat.Sliding(time.Hour)},
+			{Name: "p90", Aggregate: Percentile("amount", 90), Window: gofeat.Sliding(time.Hour)},
+			{Name: "p95", Aggregate: Percentile("amount", 95), Window: gofeat.Sliding(time.Hour)},
 		},
 	})
 	if err != nil {

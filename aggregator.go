@@ -2,9 +2,8 @@ package gofeat
 
 // Aggregator computes a value from a sequence of inputs.
 type Aggregator interface {
-	Add(value any)
+	Add(data map[string]any)
 	Result() any
-	Reset()
 }
 
 // AggregatorFactory creates new Aggregator instances.
@@ -15,32 +14,50 @@ func Count() Aggregator { return &countAgg{} }
 
 type countAgg struct{ n int }
 
-func (a *countAgg) Add(any)     { a.n++ }
-func (a *countAgg) Result() any { return a.n }
-func (a *countAgg) Reset()      { a.n = 0 }
+func (a *countAgg) Add(map[string]any) { a.n++ }
+func (a *countAgg) Result() any        { return a.n }
 
 // Sum computes the sum of float64 values.
-func Sum() Aggregator { return &sumAgg{} }
+func Sum(field string) AggregatorFactory {
+	return func() Aggregator {
+		return &sumAgg{field: field}
+	}
+}
 
-type sumAgg struct{ sum float64 }
+type sumAgg struct {
+	sum   float64
+	field string
+}
 
-func (a *sumAgg) Add(v any) {
-	if f, ok := toFloat64(v); ok {
+func (a *sumAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
+	if f, okF := toFloat64(v); okF {
 		a.sum += f
 	}
 }
 func (a *sumAgg) Result() any { return a.sum }
-func (a *sumAgg) Reset()      { a.sum = 0 }
 
 // Min computes the minimum float64 value.
-func Min() Aggregator { return &minAgg{} }
+func Min(field string) AggregatorFactory {
+	return func() Aggregator {
+		return &minAgg{field: field}
+	}
+}
 
 type minAgg struct {
 	min   float64
 	valid bool
+	field string
 }
 
-func (a *minAgg) Add(v any) {
+func (a *minAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
 	f, ok := toFloat64(v)
 	if !ok {
 		return
@@ -57,17 +74,25 @@ func (a *minAgg) Result() any {
 	}
 	return a.min
 }
-func (a *minAgg) Reset() { a.min, a.valid = 0, false }
 
 // Max computes the maximum float64 value.
-func Max() Aggregator { return &maxAgg{} }
+func Max(field string) AggregatorFactory {
+	return func() Aggregator {
+		return &maxAgg{field: field}
+	}
+}
 
 type maxAgg struct {
 	max   float64
 	valid bool
+	field string
 }
 
-func (a *maxAgg) Add(v any) {
+func (a *maxAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
 	f, ok := toFloat64(v)
 	if !ok {
 		return
@@ -84,31 +109,50 @@ func (a *maxAgg) Result() any {
 	}
 	return a.max
 }
-func (a *maxAgg) Reset() { a.max, a.valid = 0, false }
 
 // Last returns the last non-nil value.
-func Last() Aggregator { return &lastAgg{} }
-
-type lastAgg struct{ last any }
-
-func (a *lastAgg) Add(v any)   { a.last = v }
-func (a *lastAgg) Result() any { return a.last }
-func (a *lastAgg) Reset()      { a.last = nil }
-
-// CountDistinct counts unique values.
-func CountDistinct() Aggregator {
-	return &countDistinctAgg{seen: make(map[any]struct{})}
-}
-
-type countDistinctAgg struct{ seen map[any]struct{} }
-
-func (a *countDistinctAgg) Add(v any) {
-	if v != nil {
-		a.seen[v] = struct{}{}
+func Last(field string) AggregatorFactory {
+	return func() Aggregator {
+		return &lastAgg{field: field}
 	}
 }
+
+type lastAgg struct {
+	last  any
+	field string
+}
+
+func (a *lastAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
+	a.last = v
+}
+
+func (a *lastAgg) Result() any { return a.last }
+
+// CountDistinct counts unique values.
+func CountDistinct(field string) AggregatorFactory {
+	return func() Aggregator {
+		return &countDistinctAgg{field: field, seen: make(map[any]struct{})}
+	}
+}
+
+type countDistinctAgg struct {
+	seen  map[any]struct{}
+	field string
+}
+
+func (a *countDistinctAgg) Add(data map[string]any) {
+	v, ok := data[a.field]
+	if !ok {
+		return
+	}
+
+	a.seen[v] = struct{}{}
+}
 func (a *countDistinctAgg) Result() any { return len(a.seen) }
-func (a *countDistinctAgg) Reset()      { clear(a.seen) }
 
 func toFloat64(v any) (float64, bool) {
 	switch n := v.(type) {
