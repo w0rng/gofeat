@@ -74,9 +74,9 @@ func main() {
         log.Fatal(err)
     }
 
-    txCount := result.MustInt("tx_count_1h")
-    txSum := result.MustFloat("tx_sum_1h")
-    countries := result.MustInt("countries_1h")
+    txCount := result.IntOr("tx_count_1h", -1)
+    txSum := result.FloatOr("tx_sum_1h", -1)
+    countries := result.IntOr("countries_1h", -1)
 
     // Fraud detection logic
     if txCount > 10 && countries > 3 {
