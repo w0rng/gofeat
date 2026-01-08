@@ -10,7 +10,6 @@ import (
 type Store struct {
 	storage  Storage
 	features []Feature
-	ttl      time.Duration
 }
 
 func New(cfg Config) (*Store, error) {
@@ -31,13 +30,12 @@ func New(cfg Config) (*Store, error) {
 
 	storage := cfg.Storage
 	if storage == nil {
-		storage = NewMemoryStorage()
+		storage = NewMemoryStorage(cfg.TTL)
 	}
 
 	return &Store{
 		storage:  storage,
 		features: cfg.Features,
-		ttl:      cfg.TTL,
 	}, nil
 }
 
@@ -69,27 +67,9 @@ func (s *Store) GetAt(ctx context.Context, entityID string, at time.Time) (Resul
 		return Result{}, err
 	}
 
-	events, err := s.storage.Get(ctx, entityID)
+	events, err := s.storage.Get(ctx, entityID, at)
 	if err != nil {
 		return Result{}, fmt.Errorf("failed to fetch events: %w", err)
-	}
-
-	// Apply TTL and point-in-time cutoff
-	cutoff := time.Time{}
-	if s.ttl > 0 {
-		cutoff = at.Add(-s.ttl)
-	}
-
-	// Filter in-place to avoid allocation
-	filtered := events[:0]
-	for _, e := range events {
-		if e.Timestamp.After(at) {
-			continue
-		}
-		if !cutoff.IsZero() && e.Timestamp.Before(cutoff) {
-			continue
-		}
-		filtered = append(filtered, e)
 	}
 
 	values := make(map[string]any, len(s.features))
@@ -98,7 +78,7 @@ func (s *Store) GetAt(ctx context.Context, entityID string, at time.Time) (Resul
 			return Result{}, err
 		}
 
-		selected := f.Window.Select(filtered, at)
+		selected := f.Window.Select(events, at)
 		agg := f.Aggregate()
 		for _, e := range selected {
 			agg.Add(e.Data)
@@ -134,12 +114,8 @@ func (s *Store) Evict(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	if s.ttl == 0 {
-		return nil
-	}
-	cutoff := time.Now().UTC().Add(-s.ttl)
 
-	err := s.storage.Evict(ctx, cutoff)
+	err := s.storage.Evict(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to evict events: %w", err)
 	}

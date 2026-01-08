@@ -562,12 +562,19 @@ func (m *mockStorage) Push(_ context.Context, entityID string, events ...gofeat.
 	return nil
 }
 
-func (m *mockStorage) Get(_ context.Context, entityID string) ([]gofeat.Event, error) {
+func (m *mockStorage) Get(_ context.Context, entityID string, at time.Time) ([]gofeat.Event, error) {
 	m.getCalled = true
-	return m.events[entityID], nil
+	// Simple mock: return all events up to 'at'
+	var result []gofeat.Event
+	for _, e := range m.events[entityID] {
+		if !e.Timestamp.After(at) {
+			result = append(result, e)
+		}
+	}
+	return result, nil
 }
 
-func (m *mockStorage) Evict(_ context.Context, _ time.Time) error {
+func (m *mockStorage) Evict(_ context.Context) error {
 	m.evictCalled = true
 	return nil
 }
@@ -594,11 +601,11 @@ func (e *errorStorage) Push(_ context.Context, _ string, _ ...gofeat.Event) erro
 	return errors.New("storage error")
 }
 
-func (e *errorStorage) Get(_ context.Context, _ string) ([]gofeat.Event, error) {
+func (e *errorStorage) Get(_ context.Context, _ string, _ time.Time) ([]gofeat.Event, error) {
 	return nil, errors.New("storage error")
 }
 
-func (e *errorStorage) Evict(_ context.Context, _ time.Time) error {
+func (e *errorStorage) Evict(_ context.Context) error {
 	return errors.New("storage error")
 }
 

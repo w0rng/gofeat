@@ -179,7 +179,7 @@ func BenchmarkStore_MultipleFeatures(b *testing.B) {
 }
 
 func BenchmarkStorage_Push(b *testing.B) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 	now := time.Now().UTC()
 
@@ -193,7 +193,7 @@ func BenchmarkStorage_Push(b *testing.B) {
 }
 
 func BenchmarkStorage_Get(b *testing.B) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 	now := time.Now().UTC()
 
@@ -207,9 +207,10 @@ func BenchmarkStorage_Get(b *testing.B) {
 	}
 	s.Push(ctx, "user1", events...)
 
+	queryTime := now.Add(1000 * time.Second)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.Get(ctx, "user1")
+		s.Get(ctx, "user1", queryTime)
 	}
 }
 

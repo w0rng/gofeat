@@ -3,9 +3,9 @@ package gofeat
 import "time"
 
 type Config struct {
-	TTL      time.Duration
 	Features []Feature
-	Storage  Storage // optional, defaults to in-memory
+	Storage  Storage       // optional, defaults to in-memory with no TTL
+	TTL      time.Duration // Used only if Storage is not provided
 }
 
 // Feature defines a single feature computation.

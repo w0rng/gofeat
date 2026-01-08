@@ -150,18 +150,24 @@ Implement the `Storage` interface for custom backends:
 
 ```go
 type Storage interface {
-    Push(ctx context.Context, entityID string, event Event) error
-    Events(ctx context.Context, entityID string) ([]Event, error)
-    Evict(ctx context.Context, before time.Time) error
+    Push(ctx context.Context, entityID string, events ...Event) error
+    Get(ctx context.Context, entityID string, at time.Time) ([]Event, error)
+    Evict(ctx context.Context) error
+    Stats(ctx context.Context) (StorageStats, error)
     Close() error
 }
 
-// Example: Redis storage
+// Example: Redis storage with 24h TTL
 store, _ := gofeat.New(gofeat.Config{
-    Storage:  NewRedisStorage(redisClient),
+    Storage:  NewRedisStorage(redisClient, 24*time.Hour),
     Features: features,
 })
 ```
+
+**Note**: Storage implementations are responsible for:
+- Applying TTL filtering in the `Get` method
+- Evicting old events in the `Evict` method based on their internal TTL
+- Keeping events sorted by timestamp per entity
 
 ## Custom Aggregators
 

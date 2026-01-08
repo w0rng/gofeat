@@ -10,7 +10,7 @@ import (
 )
 
 func TestMemoryStorage_Push_Single(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
 	event := gofeat.Event{
@@ -23,7 +23,7 @@ func TestMemoryStorage_Push_Single(t *testing.T) {
 		t.Fatalf("Push failed: %v", err)
 	}
 
-	events, err := s.Get(ctx, "user1")
+	events, err := s.Get(ctx, "user1", time.Date(2024, 1, 1, 13, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestMemoryStorage_Push_Single(t *testing.T) {
 }
 
 func TestMemoryStorage_Push_Batch(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
 	events := []gofeat.Event{
@@ -52,7 +52,7 @@ func TestMemoryStorage_Push_Batch(t *testing.T) {
 		t.Fatalf("Push failed: %v", err)
 	}
 
-	got, err := s.Get(ctx, "user1")
+	got, err := s.Get(ctx, "user1", time.Date(2024, 1, 1, 14, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestMemoryStorage_Push_Batch(t *testing.T) {
 }
 
 func TestMemoryStorage_Push_MaintainsSortOrder(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
 	// Push first event
@@ -104,7 +104,7 @@ func TestMemoryStorage_Push_MaintainsSortOrder(t *testing.T) {
 		t.Fatalf("Push failed: %v", err)
 	}
 
-	events, err := s.Get(ctx, "user1")
+	events, err := s.Get(ctx, "user1", time.Date(2024, 1, 1, 14, 0, 0, 0, time.UTC))
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -121,10 +121,10 @@ func TestMemoryStorage_Push_MaintainsSortOrder(t *testing.T) {
 }
 
 func TestMemoryStorage_Get_NonExistent(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
-	events, err := s.Get(ctx, "nonexistent")
+	events, err := s.Get(ctx, "nonexistent", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
@@ -135,7 +135,7 @@ func TestMemoryStorage_Get_NonExistent(t *testing.T) {
 }
 
 func TestMemoryStorage_ContextCancellation(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -144,12 +144,12 @@ func TestMemoryStorage_ContextCancellation(t *testing.T) {
 		t.Error("expected error for canceled context in Push")
 	}
 
-	_, err = s.Get(ctx, "user1")
+	_, err = s.Get(ctx, "user1", time.Now().UTC())
 	if err == nil {
 		t.Error("expected error for canceled context in Get")
 	}
 
-	err = s.Evict(ctx, time.Now())
+	err = s.Evict(ctx)
 	if err == nil {
 		t.Error("expected error for canceled context in Evict")
 	}
@@ -161,7 +161,7 @@ func TestMemoryStorage_ContextCancellation(t *testing.T) {
 }
 
 func TestMemoryStorage_Evict(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(1 * time.Hour) // 1 hour TTL
 	ctx := context.Background()
 
 	now := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -178,30 +178,25 @@ func TestMemoryStorage_Evict(t *testing.T) {
 		t.Fatalf("Push failed: %v", err)
 	}
 
-	// Evict events older than 1 hour
-	cutoff := now.Add(-1 * time.Hour)
-	err = s.Evict(ctx, cutoff)
+	// Evict events older than 1 hour from now
+	err = s.Evict(ctx)
 	if err != nil {
 		t.Fatalf("Evict failed: %v", err)
 	}
 
-	remaining, err := s.Get(ctx, "user1")
+	remaining, err := s.Get(ctx, "user1", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
 
-	// Should have events 2, 3, 4 (>= cutoff)
-	if len(remaining) != 3 {
-		t.Fatalf("expected 3 events after eviction, got %d", len(remaining))
-	}
-
-	if remaining[0].Data["id"] != 2 {
-		t.Errorf("first remaining event: got id %v, want 2", remaining[0].Data["id"])
+	// All events should be evicted since they're all in the past
+	if len(remaining) != 0 {
+		t.Fatalf("expected 0 events after eviction (all are old), got %d", len(remaining))
 	}
 }
 
-func TestMemoryStorage_Evict_All(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+func TestMemoryStorage_Evict_NoTTL(t *testing.T) {
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
 	now := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -214,59 +209,60 @@ func TestMemoryStorage_Evict_All(t *testing.T) {
 		t.Fatalf("Push failed: %v", err)
 	}
 
-	// Evict everything
-	err = s.Evict(ctx, now.Add(1*time.Hour))
+	// Evict should do nothing when TTL is 0
+	err = s.Evict(ctx)
 	if err != nil {
 		t.Fatalf("Evict failed: %v", err)
 	}
 
-	events, err := s.Get(ctx, "user1")
+	events, err := s.Get(ctx, "user1", now)
 	if err != nil {
 		t.Fatalf("Get failed: %v", err)
 	}
 
-	if len(events) != 0 {
-		t.Errorf("expected 0 events after evicting all, got %d", len(events))
+	if len(events) != 2 {
+		t.Errorf("expected 2 events (evict should not remove anything when TTL=0), got %d", len(events))
 	}
 }
 
-func TestMemoryStorage_Evict_MultipleEntities(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+func TestMemoryStorage_Get_WithTTL(t *testing.T) {
+	s := gofeat.NewMemoryStorage(1 * time.Hour) // 1 hour TTL
 	ctx := context.Background()
 
 	now := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
-	// Push old and new events for multiple entities
-	for _, entity := range []string{"user1", "user2", "user3"} {
-		err := s.Push(ctx, entity,
-			gofeat.Event{Timestamp: now.Add(-2 * time.Hour), Data: map[string]any{}},
-			gofeat.Event{Timestamp: now, Data: map[string]any{}},
-		)
-		if err != nil {
-			t.Fatalf("Push failed for %s: %v", entity, err)
-		}
+	events := []gofeat.Event{
+		{Timestamp: now.Add(-2 * time.Hour), Data: map[string]any{"id": 1}},
+		{Timestamp: now.Add(-30 * time.Minute), Data: map[string]any{"id": 2}},
+		{Timestamp: now, Data: map[string]any{"id": 3}},
 	}
 
-	cutoff := now.Add(-1 * time.Hour)
-	err := s.Evict(ctx, cutoff)
+	err := s.Push(ctx, "user1", events...)
 	if err != nil {
-		t.Fatalf("Evict failed: %v", err)
+		t.Fatalf("Push failed: %v", err)
 	}
 
-	// Each entity should have 1 event remaining
-	for _, entity := range []string{"user1", "user2", "user3"} {
-		events, err := s.Get(ctx, entity)
-		if err != nil {
-			t.Fatalf("Get failed for %s: %v", entity, err)
-		}
-		if len(events) != 1 {
-			t.Errorf("entity %s: expected 1 event, got %d", entity, len(events))
-		}
+	// Get at 'now' should only return events within 1 hour TTL
+	result, err := s.Get(ctx, "user1", now)
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+
+	// Should have events 2 and 3 (within 1 hour of 'now')
+	if len(result) != 2 {
+		t.Fatalf("expected 2 events within TTL, got %d", len(result))
+	}
+
+	if result[0].Data["id"] != 2 {
+		t.Errorf("first event: got id %v, want 2", result[0].Data["id"])
+	}
+	if result[1].Data["id"] != 3 {
+		t.Errorf("second event: got id %v, want 3", result[1].Data["id"])
 	}
 }
 
 func TestMemoryStorage_Stats(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
 	stats, err := s.Stats(ctx)
@@ -297,7 +293,7 @@ func TestMemoryStorage_Stats(t *testing.T) {
 }
 
 func TestMemoryStorage_Concurrency(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	ctx := context.Background()
 
 	now := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
@@ -334,9 +330,10 @@ func TestMemoryStorage_Concurrency(t *testing.T) {
 	}
 
 	// Verify events are sorted for each entity
+	queryTime := now.Add(10 * time.Second)
 	for i := 0; i < 10; i++ {
 		entityID := "user" + string(rune('0'+i))
-		events, err := s.Get(ctx, entityID)
+		events, err := s.Get(ctx, entityID, queryTime)
 		if err != nil {
 			t.Fatalf("Get failed for %s: %v", entityID, err)
 		}
@@ -350,7 +347,7 @@ func TestMemoryStorage_Concurrency(t *testing.T) {
 }
 
 func TestMemoryStorage_Close(t *testing.T) {
-	s := gofeat.NewMemoryStorage()
+	s := gofeat.NewMemoryStorage(0) // no TTL
 	err := s.Close()
 	if err != nil {
 		t.Errorf("Close returned error: %v", err)

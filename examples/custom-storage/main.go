@@ -45,11 +45,10 @@ func main() {
 
 	store, err := gofeat.New(
 		gofeat.Config{
-			TTL: time.Hour,
 			Features: []gofeat.Feature{
-				{Name: "sum", Aggregate: gofeat.Sum, Field: "value", Window: gofeat.Sliding(time.Hour)},
+				{Name: "sum", Aggregate: gofeat.Sum("value"), Window: gofeat.Sliding(time.Hour)},
 			},
-			Storage: pgstore.New(db),
+			Storage: pgstore.New(db, time.Hour),
 		},
 	)
 	if err != nil {

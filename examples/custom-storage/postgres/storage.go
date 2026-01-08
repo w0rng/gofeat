@@ -12,11 +12,12 @@ import (
 )
 
 type PostgresStorage struct {
-	db *sql.DB
+	db  *sql.DB
+	ttl time.Duration
 }
 
-func New(db *sql.DB) *PostgresStorage {
-	return &PostgresStorage{db: db}
+func New(db *sql.DB, ttl time.Duration) *PostgresStorage {
+	return &PostgresStorage{db: db, ttl: ttl}
 }
 
 // Push inserts events into PostgreSQL.
@@ -50,16 +51,31 @@ func (s *PostgresStorage) Push(ctx context.Context, entityID string, events ...g
 	return nil
 }
 
-// Get returns all events for an entity.
-func (s *PostgresStorage) Get(ctx context.Context, entityID string) ([]gofeat.Event, error) {
-	const query = `
-		SELECT ts, data
-		FROM events
-		WHERE entity = $1
-		ORDER BY ts ASC
-	`
+// Get returns events for an entity filtered by TTL relative to the given time.
+func (s *PostgresStorage) Get(ctx context.Context, entityID string, at time.Time) ([]gofeat.Event, error) {
+	var query string
+	var args []interface{}
 
-	rows, err := s.db.QueryContext(ctx, query, entityID)
+	if s.ttl > 0 {
+		cutoff := at.Add(-s.ttl)
+		query = `
+			SELECT ts, data
+			FROM events
+			WHERE entity = $1 AND ts > $2 AND ts <= $3
+			ORDER BY ts ASC
+		`
+		args = []interface{}{entityID, cutoff, at}
+	} else {
+		query = `
+			SELECT ts, data
+			FROM events
+			WHERE entity = $1 AND ts <= $2
+			ORDER BY ts ASC
+		`
+		args = []interface{}{entityID, at}
+	}
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "query events")
 	}
@@ -84,8 +100,13 @@ func (s *PostgresStorage) Get(ctx context.Context, entityID string) ([]gofeat.Ev
 	return events, nil
 }
 
-// Evict removes events older than `before`.
-func (s *PostgresStorage) Evict(ctx context.Context, before time.Time) error {
+// Evict removes events older than TTL from current time.
+func (s *PostgresStorage) Evict(ctx context.Context) error {
+	if s.ttl == 0 {
+		return nil
+	}
+
+	before := time.Now().UTC().Add(-s.ttl)
 	const query = `DELETE FROM events WHERE ts < $1`
 	if _, err := s.db.ExecContext(ctx, query, before); err != nil {
 		return errors.Wrap(err, "evict events")

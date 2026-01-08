@@ -9,7 +9,7 @@
 //	    TTL: 24 * time.Hour,
 //	    Features: []gofeat.Feature{
 //	        {Name: "tx_count_1h", Aggregate: gofeat.Count, Window: gofeat.Sliding(time.Hour)},
-//	        {Name: "tx_sum_1h", Aggregate: gofeat.Sum, Field: "amount", Window: gofeat.Sliding(time.Hour)},
+//	        {Name: "tx_sum_1h", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(time.Hour)},
 //	    },
 //	})
 //	if err != nil {

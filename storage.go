@@ -13,11 +13,12 @@ type Storage interface {
 	// Push adds events for an entity.
 	Push(ctx context.Context, entityID string, events ...Event) error
 
-	// Get returns all events for an entity.
-	Get(ctx context.Context, entityID string) ([]Event, error)
+	// Get returns events for an entity filtered by TTL relative to the given time.
+	// Returns events where: timestamp <= at AND timestamp > at - TTL.
+	Get(ctx context.Context, entityID string, at time.Time) ([]Event, error)
 
-	// Evict removes events older than the given time.
-	Evict(ctx context.Context, before time.Time) error
+	// Evict removes events older than TTL from current time.
+	Evict(ctx context.Context) error
 
 	// Stats returns storage statistics.
 	Stats(ctx context.Context) (StorageStats, error)
@@ -35,6 +36,7 @@ type StorageStats struct {
 type memoryStorage struct {
 	mu       sync.RWMutex
 	entities map[string]*entityStore
+	ttl      time.Duration
 }
 
 type entityStore struct {
@@ -42,9 +44,10 @@ type entityStore struct {
 	events []Event
 }
 
-func NewMemoryStorage() Storage {
+func NewMemoryStorage(ttl time.Duration) Storage {
 	return &memoryStorage{
 		entities: make(map[string]*entityStore),
+		ttl:      ttl,
 	}
 }
 
@@ -95,7 +98,7 @@ func (s *memoryStorage) Push(ctx context.Context, entityID string, events ...Eve
 	return nil
 }
 
-func (s *memoryStorage) Get(ctx context.Context, entityID string) ([]Event, error) {
+func (s *memoryStorage) Get(ctx context.Context, entityID string, at time.Time) ([]Event, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -111,14 +114,37 @@ func (s *memoryStorage) Get(ctx context.Context, entityID string) ([]Event, erro
 	es.mu.RLock()
 	defer es.mu.RUnlock()
 
-	// No copy - caller must not modify the slice
-	return es.events, nil
+	// Apply TTL and point-in-time cutoff
+	cutoff := time.Time{}
+	if s.ttl > 0 {
+		cutoff = at.Add(-s.ttl)
+	}
+
+	// Filter events: timestamp <= at AND timestamp > cutoff
+	var filtered []Event
+	for _, e := range es.events {
+		if e.Timestamp.After(at) {
+			continue
+		}
+		if !cutoff.IsZero() && !e.Timestamp.After(cutoff) {
+			continue
+		}
+		filtered = append(filtered, e)
+	}
+
+	return filtered, nil
 }
 
-func (s *memoryStorage) Evict(ctx context.Context, before time.Time) error {
+func (s *memoryStorage) Evict(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+
+	if s.ttl == 0 {
+		return nil
+	}
+
+	before := time.Now().UTC().Add(-s.ttl)
 
 	s.mu.RLock()
 	entities := make([]*entityStore, 0, len(s.entities))
