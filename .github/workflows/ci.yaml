@@ -47,3 +47,27 @@ jobs:
 
       - name: Run linters
         run: make lint
+
+  coverage:
+    name: Coverage (Coveralls)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+
+      - name: Run tests with coverage
+        run: |
+          PKGS=$(go list ./... | grep -v /examples | tr '\n' ',')
+          go test ./... -coverpkg=$PKGS -coverprofile=coverage.out
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
+        with:
+          file: coverage.out

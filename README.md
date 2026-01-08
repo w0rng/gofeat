@@ -1,4 +1,5 @@
-# gofeat
+# gofeat [![Go Version](https://img.shields.io/github/go-mod/go-version/w0rng/gofeat)](https://go.dev/) [![CI](https://github.com/w0rng/gofeat/actions/workflows/ci.yaml/badge.svg)](https://github.com/w0rng/gofeat/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/w0rng/gofeat)](https://goreportcard.com/report/github.com/w0rng/gofeat) [![Coverage Status](https://coveralls.io/repos/github/w0rng/gofeat/badge.svg?branch=main)](https://coveralls.io/github/w0rng/gofeat?branch=main)
+
 
 Embedded feature store for Go. Real-time feature computation for fraud detection and ML pipelines without external dependencies.
 
