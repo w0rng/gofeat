@@ -456,7 +456,7 @@ func TestStore_MultipleFeatures(t *testing.T) {
 			{Name: "min", Aggregate: gofeat.Min("amount")},
 			{Name: "max", Aggregate: gofeat.Max("amount")},
 			{Name: "last_country", Aggregate: gofeat.Last("country")},
-			{Name: "distinct_countries", Aggregate: gofeat.CountDistinct("country")},
+			{Name: "distinct_countries", Aggregate: gofeat.DistinctCount("country")},
 		},
 	})
 	if err != nil {

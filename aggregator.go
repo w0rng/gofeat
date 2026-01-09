@@ -132,19 +132,19 @@ func (a *lastAgg) Add(e Event) {
 
 func (a *lastAgg) Result() any { return a.last }
 
-// CountDistinct counts unique values.
-func CountDistinct(field string) AggregatorFactory {
+// DistinctCount counts unique values.
+func DistinctCount(field string) AggregatorFactory {
 	return func() Aggregator {
-		return &countDistinctAgg{field: field, seen: make(map[any]struct{})}
+		return &distinctCount{field: field, seen: make(map[any]struct{})}
 	}
 }
 
-type countDistinctAgg struct {
+type distinctCount struct {
 	seen  map[any]struct{}
 	field string
 }
 
-func (a *countDistinctAgg) Add(e Event) {
+func (a *distinctCount) Add(e Event) {
 	v, ok := e.Data[a.field]
 	if !ok {
 		return
@@ -152,7 +152,7 @@ func (a *countDistinctAgg) Add(e Event) {
 
 	a.seen[v] = struct{}{}
 }
-func (a *countDistinctAgg) Result() any { return len(a.seen) }
+func (a *distinctCount) Result() any { return len(a.seen) }
 
 func toFloat64(v any) (float64, bool) {
 	switch n := v.(type) {

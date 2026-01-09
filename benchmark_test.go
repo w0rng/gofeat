@@ -152,7 +152,7 @@ func BenchmarkStore_MultipleFeatures(b *testing.B) {
 			{Name: "min", Aggregate: gofeat.Min("amount")},
 			{Name: "max", Aggregate: gofeat.Max("amount")},
 			{Name: "last_country", Aggregate: gofeat.Last("country")},
-			{Name: "distinct_countries", Aggregate: gofeat.CountDistinct("country")},
+			{Name: "distinct_countries", Aggregate: gofeat.DistinctCount("country")},
 		},
 	})
 	defer store.Close()

@@ -156,7 +156,7 @@ func TestLifetimeWindow(t *testing.T) {
 		t.Fatalf("expected 3 events, got %d", len(selected))
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		if selected[i].Data["id"] != i+1 {
 			t.Errorf("event %d: got id %v, want %d", i, selected[i].Data["id"], i+1)
 		}

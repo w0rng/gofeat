@@ -113,7 +113,7 @@ func TestMemoryStorage_Push_MaintainsSortOrder(t *testing.T) {
 		t.Fatalf("expected 3 events, got %d", len(events))
 	}
 
-	for i := 0; i < len(events); i++ {
+	for i := range len(events) {
 		if events[i].Data["id"] != i {
 			t.Errorf("event %d: got id %v, want %d", i, events[i].Data["id"], i)
 		}
@@ -274,12 +274,12 @@ func TestMemoryStorage_Concurrency(t *testing.T) {
 
 	// Concurrent writes to different entities
 	var wg sync.WaitGroup
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
 			entityID := "user" + string(rune('0'+id%10))
-			for j := 0; j < 10; j++ {
+			for j := range 10 {
 				event := gofeat.Event{
 					Timestamp: now.Add(time.Duration(j) * time.Second),
 					Data:      map[string]any{"id": j},
@@ -305,7 +305,7 @@ func TestMemoryStorage_Concurrency(t *testing.T) {
 
 	// Verify events are sorted for each entity
 	queryTime := now.Add(10 * time.Second)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		entityID := "user" + string(rune('0'+i))
 		events, err := s.Get(ctx, entityID, queryTime)
 		if err != nil {

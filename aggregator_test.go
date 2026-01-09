@@ -189,8 +189,8 @@ func TestLastAggregator_DifferentTypes(t *testing.T) {
 	}
 }
 
-func TestCountDistinctAggregator(t *testing.T) {
-	agg := gofeat.CountDistinct("country")()
+func TestDistinctCountAggregator(t *testing.T) {
+	agg := gofeat.DistinctCount("country")()
 
 	result := agg.Result()
 	if result != 0 {
@@ -209,8 +209,8 @@ func TestCountDistinctAggregator(t *testing.T) {
 	}
 }
 
-func TestCountDistinctAggregator_Numbers(t *testing.T) {
-	agg := gofeat.CountDistinct("value")()
+func TestDistinctCountAggregator_Numbers(t *testing.T) {
+	agg := gofeat.DistinctCount("value")()
 
 	agg.Add(gofeat.Event{Data: map[string]any{"value": 1}})
 	agg.Add(gofeat.Event{Data: map[string]any{"value": 2}})
@@ -224,8 +224,8 @@ func TestCountDistinctAggregator_Numbers(t *testing.T) {
 	}
 }
 
-func TestCountDistinctAggregator_MissingField(t *testing.T) {
-	agg := gofeat.CountDistinct("country")()
+func TestDistinctCountAggregator_MissingField(t *testing.T) {
+	agg := gofeat.DistinctCount("country")()
 
 	agg.Add(gofeat.Event{Data: map[string]any{"country": "US"}})
 	agg.Add(gofeat.Event{Data: map[string]any{"other": "value"}}) // should be ignored (missing field)
@@ -238,8 +238,8 @@ func TestCountDistinctAggregator_MissingField(t *testing.T) {
 	}
 }
 
-func TestCountDistinctAggregator_MixedTypes(t *testing.T) {
-	agg := gofeat.CountDistinct("value")()
+func TestDistinctCountAggregator_MixedTypes(t *testing.T) {
+	agg := gofeat.DistinctCount("value")()
 
 	agg.Add(gofeat.Event{Data: map[string]any{"value": "string"}})
 	agg.Add(gofeat.Event{Data: map[string]any{"value": 42}})
@@ -323,8 +323,8 @@ func TestAggregators_Add(t *testing.T) {
 			want:    "value",
 		},
 		{
-			name:    "CountDistinct",
-			factory: gofeat.CountDistinct("value"),
+			name:    "DistinctCount",
+			factory: gofeat.DistinctCount("value"),
 			addFunc: func(a gofeat.Aggregator) {
 				a.Add(gofeat.Event{Data: map[string]any{"value": "a"}})
 				a.Add(gofeat.Event{Data: map[string]any{"value": "b"}})
@@ -380,8 +380,8 @@ func BenchmarkAggregators(b *testing.B) {
 			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": "value"}}) },
 		},
 		{
-			name:    "CountDistinct",
-			factory: gofeat.CountDistinct("value"),
+			name:    "DistinctCount",
+			factory: gofeat.DistinctCount("value"),
 			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": "value"}}) },
 		},
 	}
@@ -390,7 +390,7 @@ func BenchmarkAggregators(b *testing.B) {
 		b.Run(bm.name, func(b *testing.B) {
 			agg := bm.factory()
 			b.ResetTimer()
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				bm.addFunc(agg)
 			}
 		})

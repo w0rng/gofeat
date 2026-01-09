@@ -1,30 +1,42 @@
 # gofeat [![Go Version](https://img.shields.io/github/go-mod/go-version/w0rng/gofeat)](https://go.dev/) [![CI](https://github.com/w0rng/gofeat/actions/workflows/ci.yaml/badge.svg)](https://github.com/w0rng/gofeat/actions) [![Go Report Card](https://goreportcard.com/badge/github.com/w0rng/gofeat)](https://goreportcard.com/report/github.com/w0rng/gofeat) [![Coverage Status](https://coveralls.io/repos/github/w0rng/gofeat/badge.svg?branch=main)](https://coveralls.io/github/w0rng/gofeat?branch=main)
 
-
 Embedded feature store for Go. Real-time feature computation for fraud detection and ML pipelines without external dependencies.
 
 ## Why gofeat?
 
-Existing solutions (Feast, Tecton, Redis + custom code) are overkill for many use cases:
+**Problem**: You need to detect fraud in real-time, but...
 
-- Require external infrastructure
-- Complex setup and operations
-- Add network latency
+- **Feast** requires Redis + Python + infrastructure team
+- **Tecton** is $$$$$ enterprise solution  
+- **Custom Redis + code** is brittle and hard to maintain
 
-Most fraud detection tasks boil down to simple aggregations: "transactions in the last hour", "average amount in 24 hours", "distinct countries this week".
+**Reality**: 90% of fraud detection is simple aggregations:
+- "How many transactions in the last hour?"
+- "What's the velocity: events per minute?"
+- "How many unique countries this week?"
 
-gofeat gives you this in a single library with zero dependencies.
+**gofeat gives you this in 10 lines of Go**:
 
-## Features
+```go
+store, _ := gofeat.New(gofeat.Config{
+    Features: []gofeat.Feature{
+        {Name: "tx_velocity", Aggregate: gofeat.Velocity(time.Hour), Window: gofeat.Sliding(5 * time.Minute)},
+        {Name: "unique_cards", Aggregate: gofeat.UniqueRatio("card"), Window: gofeat.Sliding(5 * time.Minute)},
+    },
+})
+```
 
-- **In-memory storage** with pluggable backends (Redis, PostgreSQL, etc.)
-- **Sliding windows** for time-based aggregations
-- **Point-in-time correct** queries for ML training (no data leakage)
-- **Extensible** - custom windows, aggregators, and storage
-- **Thread-safe** with per-entity locking
-- **Context support** for timeouts and cancellation
+### What You Get
+
+✅ **Zero dependencies** - pure Go stdlib, no Redis/Kafka/Docker  
+✅ **Fast** - 1μs latency, 2M events/sec throughput (benchmarks below)  
+✅ **Point-in-time correct** - for ML training without data leakage  
+✅ **Fraud-specific aggregators** - velocity, entropy, unique ratio built-in  
+✅ **Production-ready** - thread-safe, tested, 90% coverage
 
 ## Quick Start
+
+### Basic Fraud Detection
 
 ```go
 package main
@@ -38,14 +50,20 @@ import (
 )
 
 func main() {
-    // Define features
     store, err := gofeat.New(gofeat.Config{
         TTL: 24 * time.Hour,
         Features: []gofeat.Feature{
-            {Name: "tx_count_1h", Aggregate: gofeat.Count, Window: gofeat.Sliding(time.Hour)},
-            {Name: "tx_sum_1h", Aggregate: gofeat.Sum("amount"), Window: gofeat.Sliding(time.Hour)},
-            {Name: "countries_1h", Aggregate: gofeat.CountDistinct("country"), Window: gofeat.Sliding(time.Hour)},
-            {Name: "last_country", Aggregate: gofeat.Last("country")},
+            // Velocity: transactions per minute
+            {Name: "tx_velocity", Aggregate: gofeat.Velocity(time.Hour), Window: gofeat.Sliding(5 * time.Minute)},
+            
+            // Count: total transactions
+            {Name: "tx_count_5min", Aggregate: gofeat.Count, Window: gofeat.Sliding(5 * time.Minute)},
+            
+            // Unique ratio: 1.0 = all different cards (suspicious)
+            {Name: "card_diversity", Aggregate: gofeat.UniqueRatio("card"), Window: gofeat.Sliding(5 * time.Minute)},
+            
+            // Average amount
+            {Name: "avg_amount", Aggregate: gofeat.Mean("amount"), Window: gofeat.Sliding(5 * time.Minute)},
         },
     })
     if err != nil {
@@ -55,13 +73,13 @@ func main() {
 
     ctx := context.Background()
 
-    // Push events
+    // Push transaction event
     err = store.Push(ctx, "user_123",
         gofeat.Event{
             Timestamp: time.Now().UTC(),
             Data: map[string]any{
-                "amount":  100.50,
-                "country": "US",
+                "amount": 100.50,
+                "card":   "1234",
             },
         },
     )
@@ -69,48 +87,59 @@ func main() {
         log.Fatal(err)
     }
 
-    // Get features (real-time)
+    // Get features for real-time fraud scoring
     result, err := store.Get(ctx, "user_123")
     if err != nil {
         log.Fatal(err)
     }
 
-    txCount := result.IntOr("tx_count_1h", -1)
-    txSum := result.FloatOr("tx_sum_1h", -1)
-    countries := result.IntOr("countries_1h", -1)
+    velocity := result.FloatOr("tx_velocity", 0)
+    cardDiversity := result.FloatOr("card_diversity", 0)
+    avgAmount := result.FloatOr("avg_amount", 0)
 
-    // Fraud detection logic
-    if txCount > 10 && countries > 3 {
-        log.Println("suspicious activity detected")
+    // Simple fraud detection logic
+    if velocity > 3.0 && cardDiversity > 0.8 && avgAmount < 10 {
+        log.Println("🚨 CARD TESTING DETECTED")
     }
 }
 ```
 
-## Aggregators
+## Fraud-Specific Aggregators
 
-| Aggregator | Result | Use Case |
-|------------|--------|----------|
+gofeat includes aggregators designed specifically for fraud detection:
+
+| Aggregator | Returns | Use Case |
+|------------|---------|----------|
+| `Velocity(window)` | float64 | Events per minute - detect velocity abuse |
+| `Entropy(field)` | float64 | Shannon entropy - detect diversity attacks |
+| `UniqueRatio(field)` | float64 | Unique/total ratio - detect card testing |
+| `TimeSinceFirst()` | Duration | Account age - flag new accounts |
+| `Percentile(field, p)` | float64 | P95/P99 - detect outliers |
+| `StandardDeviation(field)` | float64 | Std dev - calculate Z-scores |
+| `Mean(field)` | float64 | Average value |
+
+### Basic Aggregators
+
+| Aggregator | Returns | Use Case |
+|------------|---------|----------|
 | `Count` | int | Event frequency |
-| `Sum` | float64 | Transaction volume |
-| `Min` | float64 | Minimum amount |
-| `Max` | float64 | Maximum amount |
-| `Last` | any | Last country/device |
-| `CountDistinct` | int | Unique countries/cards |
+| `Sum(field)` | float64 | Transaction volume |
+| `Min(field)` | float64 | Minimum amount |
+| `Max(field)` | float64 | Maximum amount |
+| `Last(field)` | any | Last country/device |
+| `DistinctCount(field)` | int | Unique countries/cards |
 
 ## Windows
 
 ```go
-// Last hour
-gofeat.Sliding(time.Hour)
+// Last 5 minutes
+gofeat.Sliding(5 * time.Minute)
 
 // Last 24 hours
 gofeat.Sliding(24 * time.Hour)
 
 // All time (no window)
 gofeat.Lifetime()
-
-// Or nil for lifetime
-{Name: "total_count", Aggregate: gofeat.Count}
 ```
 
 ## Point-in-Time Queries
@@ -118,12 +147,14 @@ gofeat.Lifetime()
 For ML training, you need features computed at the time of each event, not current time. This prevents data leakage.
 
 ```go
-// Real-time serving
+// Real-time serving (uses current time)
 result, _ := store.Get(ctx, "user_123")
 
-// Historical query for ML training
+// Historical query for ML training (uses event time)
 result, _ := store.GetAt(ctx, "user_123", eventTimestamp)
 ```
+
+See [examples/point-in-time](examples/point-in-time) for a complete ML training pipeline.
 
 ## Batch Operations
 
@@ -135,6 +166,9 @@ store.Push(ctx, "user_123",
     gofeat.Event{Timestamp: t2, Data: data2},
     gofeat.Event{Timestamp: t3, Data: data3},
 )
+
+// Batch get for multiple entities
+results, _ := store.BatchGet(ctx, "user_1", "user_2", "user_3")
 ```
 
 ## Monitoring
@@ -143,6 +177,40 @@ store.Push(ctx, "user_123",
 stats, _ := store.Stats(ctx)
 log.Printf("entities: %d, events: %d", stats.Entities, stats.TotalEvents)
 ```
+
+## Performance
+
+Benchmarked on AMD Ryzen 5 5600 (6-core):
+
+| Operation | Latency | Throughput | Memory |
+|-----------|---------|------------|--------|
+| `Push` (single) | 530 ns | ~2M events/sec | 603 B/op |
+| `Get` | 1.1 μs | ~900K ops/sec | 3.8 KB/op |
+| `GetAt` (point-in-time) | 17 μs | ~60K ops/sec | 33 KB/op |
+| `Aggregation` (Count) | 30 ns | ~33M ops/sec | 48 B/op |
+
+**Parallel performance**:
+- `Push` (concurrent): 838 ns/op
+- `Get` (concurrent): 956 ns/op
+
+Run benchmarks: `go test -bench=. -benchmem`
+
+### vs Feast/Tecton
+
+| | gofeat | Feast | Tecton |
+|---|--------|-------|--------|
+| **Latency** | 1 μs | ~10-50 ms | ~5-20 ms |
+| **Dependencies** | None | Redis/DynamoDB | Kafka/Cloud |
+| **Setup time** | 30 seconds | Hours/Days | Days/Weeks |
+| **Cost** | Free | Infrastructure | $$$$ |
+| **Point-in-time** | ✅ Native | ⚠️ Complex | ✅ Native |
+
+gofeat is **10-50x faster** for single-service use cases (up to 100K events/sec).
+
+Use Feast/Tecton when you need:
+- Multi-service feature sharing
+- Petabyte-scale feature storage
+- Enterprise support
 
 ## Custom Storage
 
@@ -157,12 +225,14 @@ type Storage interface {
     Close() error
 }
 
-// Example: Redis storage with 24h TTL
+// Example: Redis storage
 store, _ := gofeat.New(gofeat.Config{
     Storage:  NewRedisStorage(redisClient, 24*time.Hour),
     Features: features,
 })
 ```
+
+See [examples/custom-storage](examples/custom-storage) for PostgreSQL implementation.
 
 **Note**: Storage implementations are responsible for:
 - Applying TTL filtering in the `Get` method
@@ -175,7 +245,7 @@ Implement the `Aggregator` interface:
 
 ```go
 type Aggregator interface {
-    Add(data map[string]any)
+    Add(e Event)
     Result() any
 }
 
@@ -185,8 +255,8 @@ type medianAgg struct {
     field  string
 }
 
-func (a *medianAgg) Add(data map[string]any) {
-    v, ok := data[a.field]
+func (a *medianAgg) Add(e Event) {
+    v, ok := e.Data[a.field]
     if !ok {
         return
     }
@@ -212,6 +282,8 @@ func Median(field string) gofeat.AggregatorFactory {
 // Usage
 {Name: "median_amount", Aggregate: Median("amount"), Window: gofeat.Sliding(time.Hour)}
 ```
+
+See [examples/custom-aggregator](examples/custom-aggregator) for a complete example.
 
 ## Custom Windows
 
@@ -240,6 +312,15 @@ func (w *businessHoursWindow) Select(events []Event, t time.Time) []Event {
 }
 ```
 
+## Examples
+
+- [basic](examples/basic) - Simple transaction counting
+- [fraud-detection](examples/fraud-detection) - Multi-feature fraud scoring
+- [card-testing](examples/card-testing) - Detect card testing attacks with velocity + diversity
+- [point-in-time](examples/point-in-time) - ML training without data leakage
+- [custom-storage](examples/custom-storage) - PostgreSQL storage backend
+- [custom-aggregator](examples/custom-aggregator) - Custom median aggregator
+
 ## Design Decisions
 
 ### Event Time vs Processing Time
@@ -248,22 +329,23 @@ gofeat uses **event time** (timestamp from the event) rather than processing tim
 
 ### Lazy Eviction
 
-Expired events are cleaned up during reads, not in background. This simplifies implementation and avoids concurrency issues. For high-throughput scenarios with many inactive entities, consider periodic cleanup.
+Expired events are cleaned up during reads, not in background. This simplifies implementation and avoids concurrency issues. For high-throughput scenarios with many inactive entities, consider periodic cleanup with `store.Evict(ctx)`.
 
 ### Data Types
 
-Events with missing fields or wrong types are silently skipped (with a warning log). This handles sparse data gracefully without crashing.
+Events with missing fields or wrong types are silently skipped. This handles sparse data gracefully without crashing your pipeline.
 
 ## Limitations
 
 - **In-memory by default** - data doesn't survive restarts (use custom storage for persistence)
 - **No deduplication** - duplicate events are counted twice (handle at the application level)
 - **UTC required** - all timestamps must be UTC
+- **Single-service** - designed for 10K-100K events/sec, not distributed petabyte-scale
 
-## License
+For distributed, petabyte-scale feature stores, use Feast or Tecton.
 
-MIT
+## Related Projects
 
-## Contributing
-
-Issues and PRs welcome.
+- [Feast](https://feast.dev/) - Full-featured feature store with infrastructure requirements
+- [Tecton](https://tecton.ai/) - Enterprise feature platform
+- [Feathr](https://github.com/feathr-ai/feathr) - Feature store from LinkedIn
