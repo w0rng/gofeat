@@ -16,8 +16,8 @@ type medianAgg struct {
 	field  string
 }
 
-func (a *medianAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *medianAgg) Add(e gofeat.Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}
@@ -64,8 +64,8 @@ func Percentile(field string, p float64) gofeat.AggregatorFactory {
 	}
 }
 
-func (a *percentileAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *percentileAgg) Add(e gofeat.Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}

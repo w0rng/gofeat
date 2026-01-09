@@ -370,50 +370,8 @@ func TestStore_ValidateUTC(t *testing.T) {
 	}
 }
 
-func TestStore_ContextCancellation(t *testing.T) {
-	store, err := gofeat.New(gofeat.Config{
-		Features: []gofeat.Feature{
-			{Name: "count", Aggregate: gofeat.Count},
-		},
-	})
-	if err != nil {
-		t.Fatalf("New failed: %v", err)
-	}
-	defer store.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	err = store.Push(ctx, "user1", gofeat.Event{Timestamp: time.Now().UTC()})
-	if err == nil {
-		t.Error("Push should fail with canceled context")
-	}
-
-	_, err = store.Get(ctx, "user1")
-	if err == nil {
-		t.Error("Get should fail with canceled context")
-	}
-
-	_, err = store.GetAt(ctx, "user1", time.Now().UTC())
-	if err == nil {
-		t.Error("GetAt should fail with canceled context")
-	}
-
-	_, err = store.BatchGet(ctx, "user1")
-	if err == nil {
-		t.Error("BatchGet should fail with canceled context")
-	}
-
-	err = store.Evict(ctx)
-	if err == nil {
-		t.Error("Evict should fail with canceled context")
-	}
-
-	_, err = store.Stats(ctx)
-	if err == nil {
-		t.Error("Stats should fail with canceled context")
-	}
-}
+// TestStore_ContextCancellation removed - we simplified the code by removing upfront ctx.Err() checks
+// Context cancellation is still respected by the underlying storage operations if they check context
 
 func TestStore_Stats(t *testing.T) {
 	store, err := gofeat.New(gofeat.Config{

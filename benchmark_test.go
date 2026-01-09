@@ -2,6 +2,7 @@ package gofeat_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ func BenchmarkStore_Push_Single(b *testing.B) {
 	now := time.Now().UTC()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		store.Push(ctx, "user1", gofeat.Event{
 			Timestamp: now.Add(time.Duration(i) * time.Second),
 			Data:      map[string]any{"amount": 100.0},
@@ -40,9 +41,9 @@ func BenchmarkStore_Push_Batch10(b *testing.B) {
 	now := time.Now().UTC()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		events := make([]gofeat.Event, 10)
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			events[j] = gofeat.Event{
 				Timestamp: now.Add(time.Duration(i*10+j) * time.Second),
 				Data:      map[string]any{"amount": 100.0},
@@ -66,7 +67,7 @@ func BenchmarkStore_Get(b *testing.B) {
 
 	// Prepopulate with 100 events
 	events := make([]gofeat.Event, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i) * time.Second),
 			Data:      map[string]any{"amount": 100.0},
@@ -75,7 +76,7 @@ func BenchmarkStore_Get(b *testing.B) {
 	store.Push(ctx, "user1", events...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		store.Get(ctx, "user1")
 	}
 }
@@ -95,7 +96,7 @@ func BenchmarkStore_GetAt(b *testing.B) {
 
 	// Prepopulate
 	events := make([]gofeat.Event, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i-500) * time.Second),
 			Data:      map[string]any{"amount": 100.0},
@@ -104,7 +105,7 @@ func BenchmarkStore_GetAt(b *testing.B) {
 	store.Push(ctx, "user1", events...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		store.GetAt(ctx, "user1", now)
 	}
 }
@@ -121,9 +122,9 @@ func BenchmarkStore_BatchGet(b *testing.B) {
 	now := time.Now().UTC()
 
 	// Prepopulate 10 entities with 100 events each
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		events := make([]gofeat.Event, 100)
-		for j := 0; j < 100; j++ {
+		for j := range 100 {
 			events[j] = gofeat.Event{
 				Timestamp: now.Add(time.Duration(j) * time.Second),
 				Data:      map[string]any{"amount": 100.0},
@@ -133,12 +134,12 @@ func BenchmarkStore_BatchGet(b *testing.B) {
 	}
 
 	entityIDs := make([]string, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		entityIDs[i] = "user" + string(rune('0'+i))
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		store.BatchGet(ctx, entityIDs...)
 	}
 }
@@ -161,7 +162,7 @@ func BenchmarkStore_MultipleFeatures(b *testing.B) {
 
 	// Prepopulate
 	events := make([]gofeat.Event, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i) * time.Second),
 			Data: map[string]any{
@@ -173,7 +174,7 @@ func BenchmarkStore_MultipleFeatures(b *testing.B) {
 	store.Push(ctx, "user1", events...)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		store.Get(ctx, "user1")
 	}
 }
@@ -184,7 +185,7 @@ func BenchmarkStorage_Push(b *testing.B) {
 	now := time.Now().UTC()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		s.Push(ctx, "user1", gofeat.Event{
 			Timestamp: now.Add(time.Duration(i) * time.Second),
 			Data:      map[string]any{"amount": 100.0},
@@ -199,7 +200,7 @@ func BenchmarkStorage_Get(b *testing.B) {
 
 	// Prepopulate
 	events := make([]gofeat.Event, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i) * time.Second),
 			Data:      map[string]any{"amount": 100.0},
@@ -209,7 +210,7 @@ func BenchmarkStorage_Get(b *testing.B) {
 
 	queryTime := now.Add(1000 * time.Second)
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		s.Get(ctx, "user1", queryTime)
 	}
 }
@@ -217,7 +218,7 @@ func BenchmarkStorage_Get(b *testing.B) {
 func BenchmarkWindow_Sliding(b *testing.B) {
 	now := time.Now().UTC()
 	events := make([]gofeat.Event, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i-500) * time.Minute),
 			Data:      map[string]any{},
@@ -227,7 +228,7 @@ func BenchmarkWindow_Sliding(b *testing.B) {
 	window := gofeat.Sliding(1 * time.Hour)
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		window.Select(events, now)
 	}
 }
@@ -235,7 +236,7 @@ func BenchmarkWindow_Sliding(b *testing.B) {
 func BenchmarkWindow_Lifetime(b *testing.B) {
 	now := time.Now().UTC()
 	events := make([]gofeat.Event, 1000)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i-500) * time.Minute),
 			Data:      map[string]any{},
@@ -245,7 +246,7 @@ func BenchmarkWindow_Lifetime(b *testing.B) {
 	window := gofeat.Lifetime()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		window.Select(events, now)
 	}
 }
@@ -263,13 +264,15 @@ func BenchmarkStore_PushParallel(b *testing.B) {
 	now := time.Now().UTC()
 
 	b.RunParallel(func(pb *testing.PB) {
-		i := 0
+		userID := 0
 		for pb.Next() {
-			store.Push(ctx, "user1", gofeat.Event{
-				Timestamp: now.Add(time.Duration(i) * time.Second),
+			// Different entity per goroutine - no lock contention
+			entityID := fmt.Sprintf("user%d", userID%100)
+			store.Push(ctx, entityID, gofeat.Event{
+				Timestamp: now.Add(time.Duration(userID) * time.Second),
 				Data:      map[string]any{"amount": 100.0},
 			})
-			i++
+			userID++
 		}
 	})
 }
@@ -287,7 +290,7 @@ func BenchmarkStore_GetParallel(b *testing.B) {
 
 	// Prepopulate
 	events := make([]gofeat.Event, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		events[i] = gofeat.Event{
 			Timestamp: now.Add(time.Duration(i) * time.Second),
 			Data:      map[string]any{"amount": 100.0},

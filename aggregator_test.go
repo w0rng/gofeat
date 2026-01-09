@@ -14,9 +14,9 @@ func TestCountAggregator(t *testing.T) {
 		t.Errorf("initial count: got %v, want 0", result)
 	}
 
-	agg.Add(nil)
-	agg.Add(nil)
-	agg.Add(nil)
+	agg.Add(gofeat.Event{})
+	agg.Add(gofeat.Event{})
+	agg.Add(gofeat.Event{})
 
 	result = agg.Result()
 	if result != 3 {
@@ -32,9 +32,9 @@ func TestSumAggregator(t *testing.T) {
 		t.Errorf("initial sum: got %v, want 0.0", result)
 	}
 
-	agg.Add(map[string]any{"some": 100.0})
-	agg.Add(map[string]any{"some": 50.5})
-	agg.Add(map[string]any{"some": 25.25})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": 100.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": 50.5}})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": 25.25}})
 
 	result = agg.Result()
 	expected := 175.75
@@ -47,11 +47,11 @@ func TestSumAggregator_TypeConversions(t *testing.T) {
 	agg := gofeat.Sum("some")()
 
 	// Test different numeric types
-	agg.Add(map[string]any{"some": float64(100.0)})
-	agg.Add(map[string]any{"some": float32(50.0)})
-	agg.Add(map[string]any{"some": int(25)})
-	agg.Add(map[string]any{"some": int64(10)})
-	agg.Add(map[string]any{"some": int32(5)})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": float64(100.0)}})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": float32(50.0)}})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": int(25)}})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": int64(10)}})
+	agg.Add(gofeat.Event{Data: map[string]any{"some": int32(5)}})
 
 	result := agg.Result().(float64)
 	expected := 190.0
@@ -63,10 +63,10 @@ func TestSumAggregator_TypeConversions(t *testing.T) {
 func TestSumAggregator_InvalidTypes(t *testing.T) {
 	agg := gofeat.Sum("value")()
 
-	agg.Add(map[string]any{"value": 100.0})
-	agg.Add(map[string]any{"value": "invalid"}) // should be ignored
-	agg.Add(map[string]any{"other": 999.0})     // should be ignored (wrong field)
-	agg.Add(map[string]any{"value": 50.0})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "invalid"}}) // should be ignored
+	agg.Add(gofeat.Event{Data: map[string]any{"other": 999.0}})     // should be ignored (wrong field)
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 50.0}})
 
 	result := agg.Result().(float64)
 	if result != 150.0 {
@@ -83,10 +83,10 @@ func TestMinAggregator(t *testing.T) {
 		t.Errorf("initial min: got %v, want 0.0", result)
 	}
 
-	agg.Add(map[string]any{"value": 100.0})
-	agg.Add(map[string]any{"value": 50.0})
-	agg.Add(map[string]any{"value": 75.0})
-	agg.Add(map[string]any{"value": 25.0})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 50.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 75.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 25.0}})
 
 	result = agg.Result()
 	if result != 25.0 {
@@ -97,9 +97,9 @@ func TestMinAggregator(t *testing.T) {
 func TestMinAggregator_NegativeValues(t *testing.T) {
 	agg := gofeat.Min("value")()
 
-	agg.Add(map[string]any{"value": 100.0})
-	agg.Add(map[string]any{"value": -50.0})
-	agg.Add(map[string]any{"value": 0.0})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": -50.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 0.0}})
 
 	result := agg.Result().(float64)
 	if result != -50.0 {
@@ -109,7 +109,7 @@ func TestMinAggregator_NegativeValues(t *testing.T) {
 
 func TestMinAggregator_SingleValue(t *testing.T) {
 	agg := gofeat.Min("value")()
-	agg.Add(map[string]any{"value": 42.0})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 42.0}})
 
 	result := agg.Result().(float64)
 	if result != 42.0 {
@@ -125,10 +125,10 @@ func TestMaxAggregator(t *testing.T) {
 		t.Errorf("initial max: got %v, want 0.0", result)
 	}
 
-	agg.Add(map[string]any{"value": 100.0})
-	agg.Add(map[string]any{"value": 200.0})
-	agg.Add(map[string]any{"value": 150.0})
-	agg.Add(map[string]any{"value": 75.0})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 200.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 150.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 75.0}})
 
 	result = agg.Result()
 	if result != 200.0 {
@@ -139,9 +139,9 @@ func TestMaxAggregator(t *testing.T) {
 func TestMaxAggregator_NegativeValues(t *testing.T) {
 	agg := gofeat.Max("value")()
 
-	agg.Add(map[string]any{"value": -100.0})
-	agg.Add(map[string]any{"value": -50.0})
-	agg.Add(map[string]any{"value": -200.0})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": -100.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": -50.0}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": -200.0}})
 
 	result := agg.Result().(float64)
 	if result != -50.0 {
@@ -157,9 +157,9 @@ func TestLastAggregator(t *testing.T) {
 		t.Errorf("initial last: got %v, want nil", result)
 	}
 
-	agg.Add(map[string]any{"value": "first"})
-	agg.Add(map[string]any{"value": "second"})
-	agg.Add(map[string]any{"value": "third"})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "first"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "second"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "third"}})
 
 	result = agg.Result()
 	if result != "third" {
@@ -170,19 +170,19 @@ func TestLastAggregator(t *testing.T) {
 func TestLastAggregator_DifferentTypes(t *testing.T) {
 	agg := gofeat.Last("value")()
 
-	agg.Add(map[string]any{"value": 42})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 42}})
 	result := agg.Result()
 	if result != 42 {
 		t.Errorf("last int: got %v, want 42", result)
 	}
 
-	agg.Add(map[string]any{"value": "string"})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "string"}})
 	result = agg.Result()
 	if result != "string" {
 		t.Errorf("last string: got %v, want string", result)
 	}
 
-	agg.Add(map[string]any{"value": 3.14})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 3.14}})
 	result = agg.Result()
 	if result != 3.14 {
 		t.Errorf("last float: got %v, want 3.14", result)
@@ -197,11 +197,11 @@ func TestCountDistinctAggregator(t *testing.T) {
 		t.Errorf("initial count distinct: got %v, want 0", result)
 	}
 
-	agg.Add(map[string]any{"country": "US"})
-	agg.Add(map[string]any{"country": "CA"})
-	agg.Add(map[string]any{"country": "US"}) // duplicate
-	agg.Add(map[string]any{"country": "MX"})
-	agg.Add(map[string]any{"country": "CA"}) // duplicate
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "US"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "CA"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "US"}}) // duplicate
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "MX"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "CA"}}) // duplicate
 
 	result = agg.Result()
 	if result != 3 {
@@ -212,11 +212,11 @@ func TestCountDistinctAggregator(t *testing.T) {
 func TestCountDistinctAggregator_Numbers(t *testing.T) {
 	agg := gofeat.CountDistinct("value")()
 
-	agg.Add(map[string]any{"value": 1})
-	agg.Add(map[string]any{"value": 2})
-	agg.Add(map[string]any{"value": 1})
-	agg.Add(map[string]any{"value": 3})
-	agg.Add(map[string]any{"value": 2})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 1}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 2}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 1}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 3}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 2}})
 
 	result := agg.Result().(int)
 	if result != 3 {
@@ -227,10 +227,10 @@ func TestCountDistinctAggregator_Numbers(t *testing.T) {
 func TestCountDistinctAggregator_MissingField(t *testing.T) {
 	agg := gofeat.CountDistinct("country")()
 
-	agg.Add(map[string]any{"country": "US"})
-	agg.Add(map[string]any{"other": "value"}) // should be ignored (missing field)
-	agg.Add(map[string]any{"country": "CA"})
-	agg.Add(map[string]any{}) // should be ignored (missing field)
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "US"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"other": "value"}}) // should be ignored (missing field)
+	agg.Add(gofeat.Event{Data: map[string]any{"country": "CA"}})
+	agg.Add(gofeat.Event{Data: map[string]any{}}) // should be ignored (missing field)
 
 	result := agg.Result().(int)
 	if result != 2 {
@@ -241,11 +241,11 @@ func TestCountDistinctAggregator_MissingField(t *testing.T) {
 func TestCountDistinctAggregator_MixedTypes(t *testing.T) {
 	agg := gofeat.CountDistinct("value")()
 
-	agg.Add(map[string]any{"value": "string"})
-	agg.Add(map[string]any{"value": 42})
-	agg.Add(map[string]any{"value": "string"}) // duplicate
-	agg.Add(map[string]any{"value": 42.0})     // different type than int(42)
-	agg.Add(map[string]any{"value": 42})       // duplicate
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "string"}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 42}})
+	agg.Add(gofeat.Event{Data: map[string]any{"value": "string"}}) // duplicate
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 42.0}})     // different type than int(42)
+	agg.Add(gofeat.Event{Data: map[string]any{"value": 42}})       // duplicate
 
 	result := agg.Result().(int)
 	// "string", 42, 42.0 = 3 distinct values
@@ -259,8 +259,8 @@ func TestAggregators_Factory(t *testing.T) {
 	agg1 := gofeat.Count()
 	agg2 := gofeat.Count()
 
-	agg1.Add(nil)
-	agg1.Add(nil)
+	agg1.Add(gofeat.Event{})
+	agg1.Add(gofeat.Event{})
 
 	result1 := agg1.Result()
 	result2 := agg2.Result()
@@ -283,43 +283,52 @@ func TestAggregators_Add(t *testing.T) {
 		{
 			name:    "Count",
 			factory: gofeat.Count,
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{}); a.Add(map[string]any{}) },
-			want:    2,
+			addFunc: func(a gofeat.Aggregator) {
+				a.Add(gofeat.Event{})
+				a.Add(gofeat.Event{})
+			},
+			want: 2,
 		},
 		{
 			name:    "Sum",
 			factory: gofeat.Sum("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": 100.0}); a.Add(map[string]any{"value": 50.0}) },
-			want:    150.0,
+			addFunc: func(a gofeat.Aggregator) {
+				a.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+				a.Add(gofeat.Event{Data: map[string]any{"value": 50.0}})
+			},
+			want: 150.0,
 		},
 		{
 			name:    "Min",
 			factory: gofeat.Min("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": 100.0}); a.Add(map[string]any{"value": 50.0}) },
-			want:    50.0,
+			addFunc: func(a gofeat.Aggregator) {
+				a.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+				a.Add(gofeat.Event{Data: map[string]any{"value": 50.0}})
+			},
+			want: 50.0,
 		},
 		{
 			name:    "Max",
 			factory: gofeat.Max("value"),
 			addFunc: func(a gofeat.Aggregator) {
-				a.Add(map[string]any{"value": 100.0})
-				a.Add(map[string]any{"value": 200.0})
+				a.Add(gofeat.Event{Data: map[string]any{"value": 100.0}})
+				a.Add(gofeat.Event{Data: map[string]any{"value": 200.0}})
 			},
 			want: 200.0,
 		},
 		{
 			name:    "Last",
 			factory: gofeat.Last("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": "value"}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": "value"}}) },
 			want:    "value",
 		},
 		{
 			name:    "CountDistinct",
 			factory: gofeat.CountDistinct("value"),
 			addFunc: func(a gofeat.Aggregator) {
-				a.Add(map[string]any{"value": "a"})
-				a.Add(map[string]any{"value": "b"})
-				a.Add(map[string]any{"value": "a"})
+				a.Add(gofeat.Event{Data: map[string]any{"value": "a"}})
+				a.Add(gofeat.Event{Data: map[string]any{"value": "b"}})
+				a.Add(gofeat.Event{Data: map[string]any{"value": "a"}})
 			},
 			want: 2,
 		},
@@ -348,32 +357,32 @@ func BenchmarkAggregators(b *testing.B) {
 		{
 			name:    "Count",
 			factory: gofeat.Count,
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{}}) },
 		},
 		{
 			name:    "Sum",
 			factory: gofeat.Sum("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": 100.0}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": 100.0}}) },
 		},
 		{
 			name:    "Min",
 			factory: gofeat.Min("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": 100.0}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": 100.0}}) },
 		},
 		{
 			name:    "Max",
 			factory: gofeat.Max("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": 100.0}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": 100.0}}) },
 		},
 		{
 			name:    "Last",
 			factory: gofeat.Last("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": "value"}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": "value"}}) },
 		},
 		{
 			name:    "CountDistinct",
 			factory: gofeat.CountDistinct("value"),
-			addFunc: func(a gofeat.Aggregator) { a.Add(map[string]any{"value": "value"}) },
+			addFunc: func(a gofeat.Aggregator) { a.Add(gofeat.Event{Data: map[string]any{"value": "value"}}) },
 		},
 	}
 

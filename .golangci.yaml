@@ -1,154 +1,150 @@
 version: "2"
 run:
-  build-tags:
-    - integration
-  issues-exit-code: 1
-  tests: true
+    build-tags:
+        - integration
+    issues-exit-code: 1
+    tests: true
 output:
-  formats:
-    text:
-      path: stdout
-      print-linter-name: true
-      print-issued-lines: true
+    formats:
+        text:
+            path: stdout
+            print-linter-name: true
+            print-issued-lines: true
 linters:
-  default: none
-  enable:
-    - asciicheck
-    - bodyclose
-    - copyloopvar
-    - cyclop
-    - dupl
-    - errcheck
-    - errname
-    - errorlint
-    - exhaustive
-    - funlen
-    - gochecknoglobals
-    - gochecknoinits
-    - gocognit
-    - goconst
-    - gocritic
-    - godot
-    - goprintffuncname
-    - gosec
-    - govet
-    - ineffassign
-    - lll
-    - misspell
-    - mnd
-    - musttag
-    - nakedret
-    - nestif
-    - nilerr
-    - nilnil
-    - nolintlint
-    - nosprintfhostport
-    - prealloc
-    - protogetter
-    - revive
-    - rowserrcheck
-    - staticcheck
-    - testableexamples
-    - testifylint
-    - testpackage
-    - tparallel
-    - unconvert
-    - unparam
-    - unused
-    - wastedassign
-    - whitespace
-    - wrapcheck
-  settings:
-    cyclop:
-      max-complexity: 25
-      package-average: 10
-    wrapcheck:
-      ignore-package-globs:
-        - context
-    dupl:
-      threshold: 100
-    errcheck:
-      check-type-assertions: true
-    exhaustive:
-      default-signifies-exhaustive: true
-    funlen:
-      lines: 60
-      statements: 40
-      ignore-comments: true
-    gocognit:
-      min-complexity: 40
-    goconst:
-      min-len: 2
-      min-occurrences: 2
-    gocritic:
-      disabled-checks:
-        - unnamedResult
-        - whyNoLint
-      enabled-tags:
-        - performance
-        - style
-        - experimental
-      settings:
-        captLocal:
-          paramsOnly: false
-        underef:
-          skipRecvDeref: false
-        hugeParam:
-          sizeThreshold: 400
-    govet:
-      disable:
-        - fieldalignment
-      enable-all: true
-      settings:
-        shadow:
-          strict: true
-    lll:
-      line-length: 140
-    misspell:
-      locale: US
-    mnd:
-      ignored-numbers:
-        - "2"
-        - "10"
-        - "64"
-    nakedret:
-      max-func-lines: 0
-    nolintlint:
-      require-explanation: true
-      require-specific: true
-      allow-no-explanation:
+    default: none
+    enable:
+        - asciicheck
+        - bodyclose
+        - copyloopvar
+        - cyclop
+        - dupl
+        - errcheck
+        - errname
+        - errorlint
+        - exhaustive
         - funlen
+        - gochecknoglobals
+        - gochecknoinits
         - gocognit
+        - goconst
+        - gocritic
+        - godot
+        - goprintffuncname
+        - gosec
+        - govet
+        - ineffassign
         - lll
+        - misspell
+        - mnd
+        - musttag
+        - nakedret
+        - nestif
+        - nilerr
+        - nilnil
+        - nolintlint
+        - nosprintfhostport
+        - prealloc
+        - protogetter
+        - revive
+        - rowserrcheck
+        - staticcheck
+        - testableexamples
+        - testifylint
+        - testpackage
         - tparallel
-    prealloc:
-      simple: true
-      range-loops: true
-      for-loops: true
-    revive:
-      rules:
-        - name: exported
-          disabled: true
-  exclusions:
-    paths:
-      - examples
-    rules:
-      - path: _test\.go
-        linters:
-          - dupl
-          - errcheck
-          - gosec
-          - funlen
-      - text: 'shadow: declaration of "err" shadows declaration'
-        linters:
-          - govet
+        - unconvert
+        - unparam
+        - unused
+        - wastedassign
+        - whitespace
+    settings:
+        cyclop:
+            max-complexity: 25
+            package-average: 10
+        dupl:
+            threshold: 100
+        errcheck:
+            check-type-assertions: true
+        exhaustive:
+            default-signifies-exhaustive: true
+        funlen:
+            lines: 60
+            statements: 40
+            ignore-comments: true
+        gocognit:
+            min-complexity: 40
+        goconst:
+            min-len: 2
+            min-occurrences: 2
+        gocritic:
+            disabled-checks:
+                - unnamedResult
+                - whyNoLint
+            enabled-tags:
+                - performance
+                - style
+                - experimental
+            settings:
+                captLocal:
+                    paramsOnly: false
+                underef:
+                    skipRecvDeref: false
+                hugeParam:
+                    sizeThreshold: 400
+        govet:
+            disable:
+                - fieldalignment
+            enable-all: true
+            settings:
+                shadow:
+                    strict: true
+        lll:
+            line-length: 140
+        misspell:
+            locale: US
+        mnd:
+            ignored-numbers:
+                - "2"
+                - "10"
+                - "64"
+        nakedret:
+            max-func-lines: 0
+        nolintlint:
+            require-explanation: true
+            require-specific: true
+            allow-no-explanation:
+                - funlen
+                - gocognit
+                - lll
+                - tparallel
+        prealloc:
+            simple: true
+            range-loops: true
+            for-loops: true
+        revive:
+            rules:
+                - name: exported
+                  disabled: true
+    exclusions:
+        paths:
+            - examples
+        rules:
+            - path: _test\.go
+              linters:
+                  - dupl
+                  - errcheck
+                  - gosec
+                  - funlen
+            - text: 'shadow: declaration of "err" shadows declaration'
+              linters:
+                  - govet
 formatters:
-  enable:
-    - gci
-    - gofumpt
-  settings:
-    gci:
-      sections:
-        - standard
-        - Prefix(github,gitlab,google,golang,go)
-        - Prefix(github.com/w0rng/gofeat)
+    enable:
+        - gci
+        - gofumpt
+    settings:
+        gci:
+            sections:
+                - standard
+                - Prefix(github,gitlab,google,golang,go)
+                - Prefix(github.com/w0rng/gofeat)

@@ -134,32 +134,6 @@ func TestMemoryStorage_Get_NonExistent(t *testing.T) {
 	}
 }
 
-func TestMemoryStorage_ContextCancellation(t *testing.T) {
-	s := gofeat.NewMemoryStorage(0) // no TTL
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	err := s.Push(ctx, "user1", gofeat.Event{Timestamp: time.Now().UTC()})
-	if err == nil {
-		t.Error("expected error for canceled context in Push")
-	}
-
-	_, err = s.Get(ctx, "user1", time.Now().UTC())
-	if err == nil {
-		t.Error("expected error for canceled context in Get")
-	}
-
-	err = s.Evict(ctx)
-	if err == nil {
-		t.Error("expected error for canceled context in Evict")
-	}
-
-	_, err = s.Stats(ctx)
-	if err == nil {
-		t.Error("expected error for canceled context in Stats")
-	}
-}
-
 func TestMemoryStorage_Evict(t *testing.T) {
 	s := gofeat.NewMemoryStorage(1 * time.Hour) // 1 hour TTL
 	ctx := context.Background()

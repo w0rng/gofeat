@@ -40,22 +40,13 @@ func New(cfg Config) (*Store, error) {
 }
 
 func (s *Store) Push(ctx context.Context, entityID string, events ...Event) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	for i, e := range events {
 		if err := s.validateEvent(e); err != nil {
 			return fmt.Errorf("invalid event %d: %w", i, err)
 		}
 	}
 
-	err := s.storage.Push(ctx, entityID, events...)
-	if err != nil {
-		return fmt.Errorf("failed to push events: %w", err)
-	}
-
-	return nil
+	return s.storage.Push(ctx, entityID, events...)
 }
 
 func (s *Store) Get(ctx context.Context, entityID string) (Result, error) {
@@ -63,25 +54,17 @@ func (s *Store) Get(ctx context.Context, entityID string) (Result, error) {
 }
 
 func (s *Store) GetAt(ctx context.Context, entityID string, at time.Time) (Result, error) {
-	if err := ctx.Err(); err != nil {
-		return Result{}, err
-	}
-
 	events, err := s.storage.Get(ctx, entityID, at)
 	if err != nil {
-		return Result{}, fmt.Errorf("failed to fetch events: %w", err)
+		return Result{}, err
 	}
 
 	values := make(map[string]any, len(s.features))
 	for _, f := range s.features {
-		if err := ctx.Err(); err != nil {
-			return Result{}, err
-		}
-
 		selected := f.Window.Select(events, at)
 		agg := f.Aggregate()
 		for _, e := range selected {
-			agg.Add(e.Data)
+			agg.Add(e)
 		}
 		values[f.Name] = agg.Result()
 	}
@@ -94,10 +77,6 @@ func (s *Store) BatchGet(ctx context.Context, entityIDs ...string) (map[string]R
 }
 
 func (s *Store) BatchGetAt(ctx context.Context, at time.Time, entityIDs ...string) (map[string]Result, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
 	results := make(map[string]Result, len(entityIDs))
 	for _, entityID := range entityIDs {
 		result, err := s.GetAt(ctx, entityID, at)
@@ -111,34 +90,15 @@ func (s *Store) BatchGetAt(ctx context.Context, at time.Time, entityIDs ...strin
 }
 
 func (s *Store) Evict(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
-	err := s.storage.Evict(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to evict events: %w", err)
-	}
-
-	return nil
+	return s.storage.Evict(ctx)
 }
 
 func (s *Store) Stats(ctx context.Context) (StorageStats, error) {
-	stat, err := s.storage.Stats(ctx)
-	if err != nil {
-		return StorageStats{}, fmt.Errorf("failed to stats: %w", err)
-	}
-
-	return stat, nil
+	return s.storage.Stats(ctx)
 }
 
 func (s *Store) Close() error {
-	err := s.storage.Close()
-	if err != nil {
-		return fmt.Errorf("error closing storage: %w", err)
-	}
-
-	return nil
+	return s.storage.Close()
 }
 
 func (s *Store) validateEvent(e Event) error {

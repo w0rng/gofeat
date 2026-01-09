@@ -2,6 +2,7 @@ package gofeat
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 	"sync"
@@ -34,8 +35,7 @@ type StorageStats struct {
 
 // memoryStorage is an in-memory implementation of Storage.
 type memoryStorage struct {
-	mu       sync.RWMutex
-	entities map[string]*entityStore
+	entities sync.Map // string -> *entityStore
 	ttl      time.Duration
 }
 
@@ -46,41 +46,21 @@ type entityStore struct {
 
 func NewMemoryStorage(ttl time.Duration) Storage {
 	return &memoryStorage{
-		entities: make(map[string]*entityStore),
-		ttl:      ttl,
+		ttl: ttl,
 	}
-}
-
-func (s *memoryStorage) getOrCreate(entityID string) *entityStore {
-	s.mu.RLock()
-	es, ok := s.entities[entityID]
-	s.mu.RUnlock()
-	if ok {
-		return es
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if es, ok = s.entities[entityID]; ok {
-		return es
-	}
-
-	es = &entityStore{}
-	s.entities[entityID] = es
-	return es
 }
 
 func (s *memoryStorage) Push(ctx context.Context, entityID string, events ...Event) error {
-	if err := ctx.Err(); err != nil {
-		return err
+	v, _ := s.entities.LoadOrStore(entityID, &entityStore{})
+	es, ok := v.(*entityStore)
+	if !ok {
+		return fmt.Errorf("unknown storage type: %v", v)
 	}
-
-	es := s.getOrCreate(entityID)
 
 	es.mu.Lock()
 	defer es.mu.Unlock()
 
+	// Optimize for single event: binary insert O(log n) instead of full sort O(n log n)
 	if len(events) == 1 {
 		e := events[0]
 		idx := sort.Search(len(es.events), func(i int) bool {
@@ -88,7 +68,7 @@ func (s *memoryStorage) Push(ctx context.Context, entityID string, events ...Eve
 		})
 		es.events = slices.Insert(es.events, idx, e)
 	} else {
-		// Batch: append all, then sort once instead of N insertions
+		// Batch: append all, then sort once
 		es.events = append(es.events, events...)
 		sort.Slice(es.events, func(i, j int) bool {
 			return es.events[i].Timestamp.Before(es.events[j].Timestamp)
@@ -99,18 +79,15 @@ func (s *memoryStorage) Push(ctx context.Context, entityID string, events ...Eve
 }
 
 func (s *memoryStorage) Get(ctx context.Context, entityID string, at time.Time) ([]Event, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
-	}
-
-	s.mu.RLock()
-	es, ok := s.entities[entityID]
-	s.mu.RUnlock()
-
+	v, ok := s.entities.Load(entityID)
 	if !ok {
 		return nil, nil
 	}
 
+	es, ok := v.(*entityStore)
+	if !ok {
+		return nil, fmt.Errorf("unknown storage format: %v", v)
+	}
 	es.mu.RLock()
 	defer es.mu.RUnlock()
 
@@ -121,7 +98,8 @@ func (s *memoryStorage) Get(ctx context.Context, entityID string, at time.Time) 
 	}
 
 	// Filter events: timestamp <= at AND timestamp > cutoff
-	var filtered []Event
+	// Pre-allocate to avoid multiple allocations
+	filtered := make([]Event, 0, len(es.events))
 	for _, e := range es.events {
 		if e.Timestamp.After(at) {
 			continue
@@ -136,28 +114,17 @@ func (s *memoryStorage) Get(ctx context.Context, entityID string, at time.Time) 
 }
 
 func (s *memoryStorage) Evict(ctx context.Context) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-
 	if s.ttl == 0 {
 		return nil
 	}
 
 	before := time.Now().UTC().Add(-s.ttl)
 
-	s.mu.RLock()
-	entities := make([]*entityStore, 0, len(s.entities))
-	for _, es := range s.entities {
-		entities = append(entities, es)
-	}
-	s.mu.RUnlock()
-
-	for _, es := range entities {
-		if err := ctx.Err(); err != nil {
-			return err
+	s.entities.Range(func(key, value any) bool {
+		es, ok := value.(*entityStore)
+		if !ok {
+			return true
 		}
-
 		es.mu.Lock()
 		idx := sort.Search(len(es.events), func(i int) bool {
 			return !es.events[i].Timestamp.Before(before)
@@ -166,28 +133,30 @@ func (s *memoryStorage) Evict(ctx context.Context) error {
 			es.events = es.events[idx:]
 		}
 		es.mu.Unlock()
-	}
+		return true
+	})
 
 	return nil
 }
 
 func (s *memoryStorage) Stats(ctx context.Context) (StorageStats, error) {
-	if err := ctx.Err(); err != nil {
-		return StorageStats{}, err
-	}
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+	var entities int
 	var total int64
-	for _, es := range s.entities {
+
+	s.entities.Range(func(key, value any) bool {
+		entities++
+		es, ok := value.(*entityStore)
+		if !ok {
+			return true
+		}
 		es.mu.RLock()
 		total += int64(len(es.events))
 		es.mu.RUnlock()
-	}
+		return true
+	})
 
 	return StorageStats{
-		Entities:    len(s.entities),
+		Entities:    entities,
 		TotalEvents: total,
 	}, nil
 }

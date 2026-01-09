@@ -2,7 +2,7 @@ package gofeat
 
 // Aggregator computes a value from a sequence of inputs.
 type Aggregator interface {
-	Add(data map[string]any)
+	Add(e Event)
 	Result() any
 }
 
@@ -14,8 +14,8 @@ func Count() Aggregator { return &countAgg{} }
 
 type countAgg struct{ n int }
 
-func (a *countAgg) Add(map[string]any) { a.n++ }
-func (a *countAgg) Result() any        { return a.n }
+func (a *countAgg) Add(Event)   { a.n++ }
+func (a *countAgg) Result() any { return a.n }
 
 // Sum computes the sum of float64 values.
 func Sum(field string) AggregatorFactory {
@@ -29,8 +29,8 @@ type sumAgg struct {
 	field string
 }
 
-func (a *sumAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *sumAgg) Add(e Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}
@@ -53,8 +53,8 @@ type minAgg struct {
 	field string
 }
 
-func (a *minAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *minAgg) Add(e Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}
@@ -88,8 +88,8 @@ type maxAgg struct {
 	field string
 }
 
-func (a *maxAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *maxAgg) Add(e Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}
@@ -122,8 +122,8 @@ type lastAgg struct {
 	field string
 }
 
-func (a *lastAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *lastAgg) Add(e Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}
@@ -144,8 +144,8 @@ type countDistinctAgg struct {
 	field string
 }
 
-func (a *countDistinctAgg) Add(data map[string]any) {
-	v, ok := data[a.field]
+func (a *countDistinctAgg) Add(e Event) {
+	v, ok := e.Data[a.field]
 	if !ok {
 		return
 	}

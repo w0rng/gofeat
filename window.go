@@ -1,6 +1,9 @@
 package gofeat
 
-import "time"
+import (
+	"sort"
+	"time"
+)
 
 // Window filters events within a time range.
 type Window interface {
@@ -34,11 +37,9 @@ func Lifetime() Window {
 }
 
 func (w *lifetimeWindow) Select(events []Event, t time.Time) []Event {
-	// Events are sorted ascending, find last event <= t
-	for i := len(events) - 1; i >= 0; i-- {
-		if !events[i].Timestamp.After(t) {
-			return events[:i+1]
-		}
-	}
-	return nil
+	// Events are sorted ascending, find first event > t
+	idx := sort.Search(len(events), func(i int) bool {
+		return events[i].Timestamp.After(t)
+	})
+	return events[:idx]
 }

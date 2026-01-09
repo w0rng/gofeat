@@ -72,8 +72,8 @@ func TestSlidingWindow_EmptyEvents(t *testing.T) {
 	window := gofeat.Sliding(1 * time.Hour)
 
 	selected := window.Select([]gofeat.Event{}, now)
-	if selected != nil {
-		t.Error("expected nil for empty events")
+	if len(selected) != 0 {
+		t.Error("expected empty slice for empty events")
 	}
 
 	selected = window.Select(nil, now)
@@ -193,8 +193,8 @@ func TestLifetimeWindow_NoEvents(t *testing.T) {
 	window := gofeat.Lifetime()
 	selected := window.Select(events, now)
 
-	if selected != nil {
-		t.Errorf("expected nil when all events are future, got %d events", len(selected))
+	if len(selected) != 0 {
+		t.Errorf("expected empty slice when all events are future, got %d events", len(selected))
 	}
 }
 
@@ -203,8 +203,8 @@ func TestLifetimeWindow_EmptyEvents(t *testing.T) {
 	window := gofeat.Lifetime()
 
 	selected := window.Select([]gofeat.Event{}, now)
-	if selected != nil {
-		t.Error("expected nil for empty events")
+	if len(selected) != 0 {
+		t.Error("expected empty slice for empty events")
 	}
 
 	selected = window.Select(nil, now)
